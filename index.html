@@ -143,6 +143,7 @@ const DADOS_EXEMPLO=[
 ];
 let TEMAS=DADOS_EXEMPLO.slice();
 let CURRENT=[];
+let EVENTOS=[];   // dias SEM live por causa de evento (vem da aba "Eventos" da planilha)
 
 /* ===== Conexão com a planilha (Google Apps Script) =====
    Cole aqui o link da sua implantação (App da Web) do Apps Script.
@@ -176,7 +177,12 @@ async function syncFromSheet(opts){
                      .filter(t=>t[1]&&String(t[1]).trim());
     if(!temas.length) throw new Error("nenhum tema encontrado na planilha");
     TEMAS=temas.map(t=>[String(t[0]||"Geral").trim(),String(t[1]).trim()]);
-    info.textContent=TEMAS.length+" temas (planilha online)";
+    EVENTOS=((data&&data.eventos)||[]).map(e=>({
+      inicio:String(e.inicio||e.data||"").slice(0,10),
+      fim:String(e.fim||e.inicio||e.data||"").slice(0,10),
+      nome:String(e.nome||e.evento||e.local||"Evento").trim()
+    })).filter(e=>e.inicio);
+    info.textContent=TEMAS.length+" temas"+(EVENTOS.length?(" · "+EVENTOS.length+" evento(s)"):"")+" (planilha online)";
     if(opts.openModal) openModal(); else render();
   }catch(err){
     info.textContent="erro ao sincronizar";
@@ -210,6 +216,8 @@ function feriados(y){if(_fer[y])return _fer[y];const E=easter(y),dd=ms=>new Date
  add(dd(60),'Corpus Christi');add(new Date(y,8,7),'Independência');add(new Date(y,9,12),'N. Sra. Aparecida');
  add(new Date(y,10,2),'Finados');add(new Date(y,10,15),'Proclamação da República');add(new Date(y,11,25),'Natal');
  _fer[y]=f;return f;}
+function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function eventoNoDia(d){const k=ymd(d);for(const e of EVENTOS){const a=e.inicio,b=e.fim||e.inicio;if(a&&k>=a&&k<=b)return e.nome;}return null;}
 
 let ANCHOR_Y=2026, ANCHOR_M=5;   // mês onde está o tema 1
 let VIEW_Y=2026, VIEW_M=5;       // mês exibido
@@ -227,6 +235,8 @@ function buildContinuous(vy,vm){
    const hol=fer[key]||null;
    const inView=(d.getFullYear()===vy && d.getMonth()===vm);
    if(hol){ if(inView) slots.push({date:new Date(d),holiday:hol,tema:null,gidx:null}); continue; }
+   const ev=eventoNoDia(d);
+   if(ev){ if(inView) slots.push({date:new Date(d),event:ev,tema:null,gidx:null}); continue; }
    const gidx=counter % L;
    if(inView) slots.push({date:new Date(d),holiday:null,tema:TEMAS[gidx],gidx:gidx});
    counter++;
@@ -236,6 +246,7 @@ function buildContinuous(vy,vm){
 function cardHTML(slot){
  const d=slot.date,dow=DOWS[d.getDay()],dt=fmt(d);
  if(slot.holiday) return `<div class="card hol"><div class="ctop"><span class="cdate">${dow} · ${dt}</span><span class="ctime"></span></div><div class="ctitle">Feriado</div><div class="cpil">${slot.holiday}</div></div>`;
+ if(slot.event) return `<div class="card hol"><div class="ctop"><span class="cdate">${dow} · ${dt}</span><span class="ctime">📍</span></div><div class="ctitle">${slot.event}</div><div class="cpil">Sem live · evento</div></div>`;
  if(!slot.tema) return `<div class="card empty"><div class="ctop"><span class="cdate">${dow} · ${dt}</span><span class="ctime"></span></div><div class="ctitle">Sem tema</div><div class="cpil"></div></div>`;
  const [pil,tema]=slot.tema,col=pilarColor(pil),disp=pilarDisplay(pil),hora=HORARIOS[d.getDay()]||'';
  return `<div class="card" style="--ac:${col}"><div class="ctop"><span class="cdate">${dow} · ${dt}</span><span class="ctime">${hora}</span></div><div class="ctitle">${tema}</div><div class="cpil">${disp}</div></div>`;
