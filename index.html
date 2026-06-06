@@ -17,7 +17,7 @@
   .cgroup .lab{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);}
   .row{display:flex;gap:8px;align-items:center;}
   select{border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:14px;background:#0A1430;color:var(--txt);font-family:inherit;min-width:150px;}
-  .btn{border:none;border-radius:9px;padding:10px 15px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:7px;transition:.15s;white-space:nowrap;}
+  .btn{border:none;border-radius:9px;padding:10px 15px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:7px;transition:.15s;white-space:nowrap;text-decoration:none;}
   .btn-blue{background:#2F6BE0;color:#fff;} .btn-blue:hover{background:#2557c0;}
   .btn-cyan{background:#56CCF2;color:#06203a;} .btn-cyan:hover{filter:brightness(.95);}
   .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--txt);} .btn-ghost:hover{border-color:#56CCF2;}
@@ -75,6 +75,7 @@
     <div class="cgroup"><span class="lab">Conteúdo</span>
       <div class="row">
         <button class="btn btn-cyan" id="btnSync">🔄 Sincronizar planilha</button>
+        <a class="btn btn-blue" id="btnEdit" href="https://docs.google.com/spreadsheets/d/1ozNm4QEsagAagb67bqQZeChj0F44BQIoUU1LQohlr_Y/edit" target="_blank" rel="noopener">📝 Editar planilha</a>
         <label class="btn btn-ghost" for="file">📄 Subir arquivo</label>
         <input type="file" id="file" accept=".xlsx,.xls,.csv">
         <button class="btn btn-ghost" id="btnCfg" title="Configurar link da planilha">⚙️</button>
