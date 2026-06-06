@@ -73,9 +73,13 @@
 <div class="wrap">
   <div class="controls">
     <div class="cgroup"><span class="lab">Conteúdo</span>
-      <div class="row"><label class="btn btn-ghost" for="file">📄 Subir planilha</label>
-      <input type="file" id="file" accept=".xlsx,.xls,.csv">
-      <span id="srcinfo" style="font-size:12px;color:var(--muted)">usando exemplo</span></div></div>
+      <div class="row">
+        <button class="btn btn-cyan" id="btnSync">🔄 Sincronizar planilha</button>
+        <label class="btn btn-ghost" for="file">📄 Subir arquivo</label>
+        <input type="file" id="file" accept=".xlsx,.xls,.csv">
+        <button class="btn btn-ghost" id="btnCfg" title="Configurar link da planilha">⚙️</button>
+      </div>
+      <span id="srcinfo" style="font-size:12px;color:var(--muted);margin-top:4px;">usando exemplo</span></div>
     <div class="cgroup"><span class="lab">Mês exibido</span>
       <div class="row"><select id="selMonth"></select></div></div>
     <div class="cgroup"><span class="lab">Baixar um dia</span>
@@ -138,6 +142,55 @@ const DADOS_EXEMPLO=[
 ];
 let TEMAS=DADOS_EXEMPLO.slice();
 let CURRENT=[];
+
+/* ===== Conexão com a planilha (Google Apps Script) =====
+   Cole aqui o link da sua implantação (App da Web) do Apps Script.
+   Ex.: "https://script.google.com/macros/s/AKfycb.../exec"
+   Se deixar em branco, o link pode ser configurado pelo botão ⚙️ (fica salvo no navegador). */
+const APPS_SCRIPT_URL="https://script.google.com/macros/s/AKfycbxjsb5au-qVd1WKDSx78BjnfDf3iwv3d476DhRBHe0iN3HuMO4JAfilAWsOwPXiUOIK/exec";
+const LS_URL_KEY="lives_apps_script_url";
+function getApiUrl(){return (APPS_SCRIPT_URL||localStorage.getItem(LS_URL_KEY)||"").trim();}
+function jsonp(url){return new Promise((res,rej)=>{
+  const cb="__lives_cb_"+Date.now();
+  const sep=url.includes("?")?"&":"?";
+  const s=document.createElement("script");
+  const timer=setTimeout(()=>{cleanup();rej(new Error("tempo esgotado"));},15000);
+  function cleanup(){clearTimeout(timer);try{delete window[cb];}catch(e){}s.remove();}
+  window[cb]=data=>{cleanup();res(data);};
+  s.onerror=()=>{cleanup();rej(new Error("falha de rede / link inválido"));};
+  s.src=url+sep+"callback="+cb;
+  document.body.appendChild(s);
+});}
+async function syncFromSheet(opts){
+  opts=opts||{};
+  const url=getApiUrl();
+  const info=document.getElementById("srcinfo");
+  if(!url){promptForUrl();return;}
+  info.textContent="sincronizando…";
+  try{
+    const data=await jsonp(url);
+    if(data&&data.ok===false) throw new Error(data.error||"resposta inválida");
+    const lista=(data&&data.temas)||data||[];
+    const temas=lista.map(t=>Array.isArray(t)?[t[0],t[1]]:[t.pilar,t.tema])
+                     .filter(t=>t[1]&&String(t[1]).trim());
+    if(!temas.length) throw new Error("nenhum tema encontrado na planilha");
+    TEMAS=temas.map(t=>[String(t[0]||"Geral").trim(),String(t[1]).trim()]);
+    info.textContent=TEMAS.length+" temas (planilha online)";
+    if(opts.openModal) openModal(); else render();
+  }catch(err){
+    info.textContent="erro ao sincronizar";
+    alert("Não consegui ler a planilha:\n"+err.message+
+          "\n\nVerifique se:\n• o link do Apps Script está correto (botão ⚙️);\n"+
+          "• a implantação está como \"Qualquer pessoa\" pode acessar.");
+  }
+}
+function promptForUrl(){
+  const cur=localStorage.getItem(LS_URL_KEY)||"";
+  const v=prompt("Cole o link do App da Web do Apps Script (termina em /exec):",cur);
+  if(v===null)return;
+  localStorage.setItem(LS_URL_KEY,v.trim());
+  if(v.trim()) syncFromSheet({openModal:true});
+}
 const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const DOWS=['DOM','SEG','TER','QUA','QUI','SEX','SAB'];
 function norm(s){return (s||'').toString().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();}
@@ -223,6 +276,8 @@ async function exportPoster(slots,pill,fname,cls){
  const canvas=await html2canvas(node,{scale:2,backgroundColor:'#0A1430',logging:false,useCORS:true});
  trigger(canvas.toDataURL('image/png'),fname);stage.innerHTML='';
 }
+document.getElementById('btnSync').onclick=()=>syncFromSheet();
+document.getElementById('btnCfg').onclick=promptForUrl;
 document.getElementById('selMonth').onchange=render;
 document.getElementById('dlMonth').onclick=()=>exportPoster(CURRENT,'Lives de '+MESES[VIEW_M],'Lives_'+MESES[VIEW_M]+'_'+VIEW_Y+'.png');
 document.getElementById('dlWeek').onclick=()=>{const i=+document.getElementById('selWeek').value;const w=weeks()[i];exportPoster(w,'Lives da Semana','Lives_Semana'+(i+1)+'_'+MESES[VIEW_M]+'.png');};
@@ -243,7 +298,8 @@ function closeModal(){document.getElementById('ov').classList.remove('on');}
 document.getElementById('mCancel').onclick=closeModal;
 document.getElementById('mOk').onclick=()=>{ANCHOR_M=+document.getElementById('mMonth').value;ANCHOR_Y=+document.getElementById('mYear').value;closeModal();buildMonthSelect();document.getElementById('selMonth').value=0;render();};
 (function(){const mm=document.getElementById('mMonth');MESES.forEach((m,i)=>{const o=document.createElement('option');o.value=i;o.textContent=m;mm.appendChild(o);});
- mm.value=5;document.getElementById('mYear').value=2026;buildMonthSelect();render();})();
+ mm.value=5;document.getElementById('mYear').value=2026;buildMonthSelect();render();
+ if(getApiUrl()) syncFromSheet();})();
 </script>
 </body>
 </html>
