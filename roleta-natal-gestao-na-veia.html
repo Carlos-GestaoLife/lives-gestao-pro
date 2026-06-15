@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Roleta de Descontos · Gestão Life</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Config de embed: ao exportar pelo painel, o Claude/Carlos injeta as opcoes aqui -->
+<script id="gl-config">window.GL_CONFIG = {};</script>
+
+<style>
+  :root{
+    --ink:#060608; --ink-2:#0B0B10; --ink-3:#141420;
+    --blue:#0004FF; --blue-2:#2A32FF; --blue-3:#5560FF; --blue-deep:#00029A;
+    --cyan:#A0E3FF; --cyan-2:#3BB7EB;
+    --gold:#E6B422; --gold-light:#FCE9A6; --gold-deep:#9C6B12;
+    --white:#FFFFFF; --w70:rgba(255,255,255,.70); --w50:rgba(255,255,255,.50);
+    --w14:rgba(255,255,255,.14); --w08:rgba(255,255,255,.08);
+    --font-display:'Anton', sans-serif;
+    --font-body:'Gibson','Sora','Inter',system-ui,-apple-system,sans-serif;
+    --font-num:'Sora','Inter',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:var(--font-body);
+    background:
+      radial-gradient(circle at 28% 18%, rgba(85,96,255,.30) 0%, rgba(85,96,255,0) 46%),
+      radial-gradient(circle at 78% 82%, rgba(0,4,255,.34) 0%, rgba(0,4,255,0) 52%),
+      radial-gradient(ellipse at center, #0B0B10 0%, #060608 68%, #000 100%);
+    color:var(--white);
+    min-height:100%;
+    display:flex; align-items:center; justify-content:center;
+    overflow-x:hidden;
+    padding:24px 14px;
+  }
+  /* atmosfera: orbe azul desfocado da marca */
+  .orb{position:fixed;border-radius:50%;filter:blur(70px);mix-blend-mode:screen;pointer-events:none;z-index:0;opacity:.7}
+  .orb.a{width:46vmax;height:46vmax;left:-12vmax;top:-14vmax;
+    background:radial-gradient(circle,#2A32FF 0%,#0004FF 38%,rgba(0,2,154,0) 72%)}
+  .orb.b{width:40vmax;height:40vmax;right:-14vmax;bottom:-16vmax;
+    background:radial-gradient(circle,rgba(160,227,255,.5) 0%,rgba(160,227,255,0) 70%)}
+
+  .stage{position:relative;z-index:2;width:100%;max-width:680px;display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center}
+
+  .eyebrow{font-size:13px;font-weight:700;letter-spacing:.30em;text-transform:uppercase;color:var(--cyan);
+    display:inline-flex;align-items:center;gap:9px}
+  .eyebrow::before,.eyebrow::after{content:"";width:22px;height:1px;background:linear-gradient(90deg,transparent,var(--gold))}
+  .eyebrow::after{background:linear-gradient(90deg,var(--gold),transparent)}
+  h1{font-family:var(--font-display);font-weight:400;line-height:.96;letter-spacing:-.01em;
+    font-size:clamp(30px,7.4vw,56px);text-transform:uppercase}
+  h1 .hl{color:var(--cyan)}
+  .subtitle{font-size:clamp(14px,3.4vw,17px);color:var(--w70);max-width:42ch;margin:0 auto}
+
+  /* roda */
+  .wheel-wrap{position:relative;width:100%;display:flex;align-items:center;justify-content:center;margin-top:4px}
+  .wheel-box{position:relative;line-height:0}
+  canvas#wheel{display:block;border-radius:50%;
+    box-shadow:0 0 0 2px rgba(255,255,255,.05), 0 26px 60px rgba(0,0,0,.6), 0 0 70px rgba(0,4,255,.28)}
+
+  /* ponteiro dourado no topo */
+  .pointer{position:absolute;top:-6px;left:50%;transform:translateX(-50%);z-index:6;
+    filter:drop-shadow(0 4px 7px rgba(0,0,0,.55))}
+  .pointer svg{display:block}
+
+  /* botao central GIRE AGORA */
+  .hub{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:5;
+    border:none;cursor:pointer;border-radius:50%;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+    color:#fff;font-family:var(--font-body);
+    background:
+      radial-gradient(circle at 50% 32%, #5560FF 0%, #2A32FF 42%, #0004FF 78%, #00029A 100%);
+    box-shadow:
+      0 0 0 3px var(--gold),
+      0 0 0 7px rgba(252,233,166,.30),
+      0 10px 26px rgba(0,0,0,.55),
+      inset 0 3px 10px rgba(255,255,255,.32),
+      inset 0 -8px 16px rgba(0,2,154,.7),
+      0 0 34px rgba(0,4,255,.55);
+    transition:transform .12s ease, box-shadow .2s ease;}
+  .hub:hover{transform:translate(-50%,-50%) scale(1.04)}
+  .hub:active{transform:translate(-50%,-50%) scale(.96)}
+  .hub:disabled{cursor:default;filter:saturate(.7) brightness(.85)}
+  .hub .g1{font-family:var(--font-display);letter-spacing:.02em;line-height:.9;font-size:var(--hub-g1,20px)}
+  .hub .g2{font-family:var(--font-display);letter-spacing:.02em;line-height:.9;font-size:var(--hub-g2,20px);color:var(--gold-light)}
+  .hub .arrow{font-size:10px;opacity:.0;height:0}
+
+  .foot{font-size:12px;color:var(--w50);display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}
+  .foot b{color:var(--cyan);font-weight:600}
+
+  /* confetti layer */
+  canvas#confetti{position:fixed;inset:0;width:100%;height:100%;z-index:40;pointer-events:none}
+
+  /* modal de premio + formulario */
+  .overlay{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:18px;
+    background:rgba(3,3,6,.74);backdrop-filter:blur(7px)}
+  .overlay.show{display:flex;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .modal{position:relative;width:100%;max-width:430px;border-radius:28px;padding:30px 26px 26px;
+    background:linear-gradient(180deg, rgba(20,20,32,.96), rgba(11,11,16,.97));
+    box-shadow:inset 0 0 0 1px rgba(216,216,216,.14), 0 24px 70px rgba(0,0,0,.6), 0 0 60px rgba(0,4,255,.3);
+    animation:pop .35s cubic-bezier(.18,1.2,.4,1);text-align:center}
+  @keyframes pop{from{transform:scale(.86) translateY(14px);opacity:0}to{transform:none;opacity:1}}
+  .modal .close{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--w50);font-size:24px;cursor:pointer;line-height:1}
+  .modal .eyebrow{justify-content:center;margin-bottom:8px}
+  .prize{font-family:var(--font-display);font-size:clamp(54px,16vw,84px);line-height:.92;
+    background:linear-gradient(180deg,var(--gold-light),var(--gold) 55%,var(--gold-deep));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 2px 10px rgba(230,180,34,.35))}
+  .prize small{display:block;font-family:var(--font-body);font-size:15px;font-weight:700;letter-spacing:.18em;
+    -webkit-text-fill-color:var(--white);color:#fff;margin-top:-2px}
+  .modal p.lead{color:var(--w70);font-size:14.5px;margin:8px auto 18px;max-width:34ch}
+  .field{text-align:left;margin-bottom:11px}
+  .field label{display:block;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--w50);margin:0 0 5px 3px}
+  .field input{width:100%;padding:13px 15px;border-radius:12px;border:1px solid var(--w14);
+    background:rgba(255,255,255,.05);color:#fff;font-family:var(--font-body);font-size:15px;outline:none;transition:border .2s,box-shadow .2s}
+  .field input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(160,227,255,.18)}
+  .field input::placeholder{color:rgba(255,255,255,.32)}
+  .btn-primary{width:100%;margin-top:6px;padding:15px 18px;border:none;border-radius:14px;cursor:pointer;
+    font-family:var(--font-display);font-size:18px;letter-spacing:.02em;color:#fff;text-transform:uppercase;
+    background:linear-gradient(180deg,#2A32FF,#0004FF 70%,#00029A);
+    box-shadow:0 0 0 2px rgba(252,233,166,.5), 0 12px 26px rgba(0,4,255,.45), inset 0 2px 6px rgba(255,255,255,.25);
+    transition:transform .12s,box-shadow .2s}
+  .btn-primary:hover{transform:translateY(-1px)}
+  .btn-primary:active{transform:translateY(1px)}
+  .err{color:#FF6B86;font-size:12.5px;margin:2px 0 0 3px;min-height:1px;text-align:left}
+  /* etapa cupom */
+  .coupon-stage{display:none}
+  .coupon-stage.show{display:block}
+  .form-stage.hide{display:none}
+  .coupon-box{margin:14px 0 6px;border:1.5px dashed var(--gold);border-radius:14px;padding:14px;
+    background:rgba(230,180,34,.07);display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .coupon-code{font-family:var(--font-num);font-weight:700;font-size:23px;letter-spacing:.12em;color:var(--gold-light)}
+  .copy-btn{border:1px solid var(--w14);background:rgba(255,255,255,.06);color:#fff;border-radius:9px;
+    padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .copy-btn:hover{border-color:var(--cyan)}
+  .valid{font-size:12px;color:var(--w50);margin-top:8px}
+
+  /* engrenagem + painel de config */
+  .gear{position:fixed;top:14px;right:14px;z-index:60;width:42px;height:42px;border-radius:50%;
+    border:1px solid var(--w14);background:rgba(11,11,16,.7);backdrop-filter:blur(6px);
+    color:var(--cyan);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 6px 18px rgba(0,0,0,.4)}
+  .gear:hover{border-color:var(--cyan)}
+  .panel{position:fixed;top:0;right:0;z-index:61;height:100%;width:360px;max-width:90vw;transform:translateX(105%);
+    transition:transform .3s cubic-bezier(.4,0,.2,1);overflow-y:auto;
+    background:rgba(8,8,12,.97);backdrop-filter:blur(10px);
+    box-shadow:-20px 0 60px rgba(0,0,0,.6);border-left:1px solid var(--w14);padding:18px 16px 50px}
+  .panel.open{transform:none}
+  .panel h2{font-family:var(--font-display);font-size:21px;letter-spacing:.01em;margin-bottom:3px}
+  .panel .ph-sub{font-size:12px;color:var(--w50);margin-bottom:14px}
+  .panel .grp{border-top:1px solid var(--w08);padding:14px 0}
+  .panel .grp:first-of-type{border-top:none}
+  .panel .grp h3{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin-bottom:10px}
+  .panel label.fl{display:block;font-size:11px;color:var(--w50);margin:0 0 4px 2px}
+  .panel input[type=text],.panel input[type=url],.panel input[type=number],.panel select{
+    width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--w14);background:rgba(255,255,255,.04);
+    color:#fff;font-family:var(--font-body);font-size:13.5px;margin-bottom:9px;outline:none}
+  .panel input:focus,.panel select:focus{border-color:var(--cyan)}
+  .prize-row{display:grid;grid-template-columns:1fr 1fr 1.3fr auto;gap:6px;align-items:center;margin-bottom:6px}
+  .prize-row input{margin-bottom:0;padding:8px 8px;font-size:12.5px}
+  .prize-row .rm{background:rgba(220,50,80,.16);color:#FF6B86;border:none;border-radius:7px;width:30px;height:32px;cursor:pointer;font-size:15px}
+  .mini{font-size:10.5px;color:var(--w50);margin:-3px 0 8px 2px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .colors{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  .color-item{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--w70)}
+  .color-item input[type=color]{width:34px;height:30px;border:1px solid var(--w14);border-radius:7px;background:none;padding:2px;cursor:pointer}
+  .chk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--w70);margin-bottom:8px;cursor:pointer}
+  .chk input{width:16px;height:16px;accent-color:var(--cyan)}
+  .panel .act{display:flex;flex-direction:column;gap:9px;margin-top:6px}
+  .panel .act button{padding:12px;border-radius:11px;border:none;cursor:pointer;font-weight:700;font-size:13.5px;font-family:var(--font-body)}
+  .btn-embed{background:linear-gradient(180deg,#2A32FF,#0004FF);color:#fff;box-shadow:0 0 0 1.5px rgba(252,233,166,.5)}
+  .btn-ghost{background:rgba(255,255,255,.06);color:#fff;border:1px solid var(--w14)!important}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);z-index:80;
+    background:rgba(25,195,125,.16);border:1px solid rgba(25,195,125,.5);color:#7CF2C0;
+    padding:11px 18px;border-radius:11px;font-size:13.5px;font-weight:600;opacity:0;transition:.3s;pointer-events:none}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .hide{display:none!important}
+  @media(max-width:480px){.gear{top:10px;right:10px;width:38px;height:38px;font-size:18px}}
+</style>
+</head>
+<body>
+  <div class="orb a"></div>
+  <div class="orb b"></div>
+
+  <main class="stage">
+    <span class="eyebrow" id="eyebrow">Roleta de Natal · Gestão na Veia</span>
+    <h1 id="title">Gire e ganhe seu <span class="hl">desconto</span></h1>
+    <p class="subtitle" id="subtitle">Você tem 1 giro. Gire a roleta e descubra quanto de desconto vai levar hoje.</p>
+
+    <div class="wheel-wrap">
+      <div class="wheel-box">
+        <div class="pointer" id="pointer">
+          <svg width="46" height="54" viewBox="0 0 46 54">
+            <defs>
+              <linearGradient id="goldgrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#FCE9A6"/><stop offset=".5" stop-color="#E6B422"/><stop offset="1" stop-color="#9C6B12"/>
+              </linearGradient>
+            </defs>
+            <path d="M23 52 L6 16 a17 17 0 0 1 34 0 Z" fill="url(#goldgrad)" stroke="#fff6d8" stroke-width="1.2"/>
+            <circle cx="23" cy="17" r="6" fill="#0B0B10"/>
+          </svg>
+        </div>
+        <canvas id="wheel" width="520" height="520"></canvas>
+        <button class="hub" id="hub" aria-label="Girar a roleta">
+          <span class="g1">GIRE</span>
+          <span class="g2">AGORA</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span>Resultado na hora.</span> <b id="footnote">Cupom liberado após o giro.</b>
+    </div>
+  </main>
+
+  <canvas id="confetti"></canvas>
+
+  <!-- modal premio + formulario -->
+  <div class="overlay" id="overlay">
+    <div class="modal" role="dialog" aria-modal="true">
+      <button class="close" id="closeModal" aria-label="Fechar">&times;</button>
+      <span class="eyebrow">Você ganhou</span>
+      <div class="prize" id="prizeBig">10%<small>DE DESCONTO</small></div>
+
+      <div class="form-stage" id="formStage">
+        <p class="lead" id="formLead">Preencha pra liberar seu cupom de desconto.</p>
+        <form id="leadForm" novalidate>
+          <div class="field" data-f="nome"><label>Nome</label><input name="nome" type="text" placeholder="Seu nome" autocomplete="name"></div>
+          <div class="field" data-f="email"><label>E-mail</label><input name="email" type="email" placeholder="voce@email.com" autocomplete="email"></div>
+          <div class="field" data-f="whatsapp"><label>WhatsApp</label><input name="whatsapp" type="tel" placeholder="(00) 00000-0000" autocomplete="tel"></div>
+          <div class="err" id="formErr"></div>
+          <button type="submit" class="btn-primary" id="formSubmit">Liberar meu cupom</button>
+        </form>
+      </div>
+
+      <div class="coupon-stage" id="couponStage">
+        <p class="lead">Pronto! Use o cupom abaixo pra garantir seu desconto:</p>
+        <div class="coupon-box">
+          <span class="coupon-code" id="couponCode">NATAL10</span>
+          <button class="copy-btn" id="copyCoupon">Copiar</button>
+        </div>
+        <a class="btn-primary" id="ctaBtn" href="#" target="_blank" rel="noopener" style="display:block;text-decoration:none;margin-top:12px">Garantir meu desconto</a>
+        <p class="valid" id="validMsg">Válido apenas hoje.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- engrenagem + painel -->
+  <button class="gear" id="gear" title="Configurações" aria-label="Configurações">&#9881;</button>
+  <aside class="panel" id="panel">
+    <h2>Configurações</h2>
+    <p class="ph-sub">Ajuste tudo aqui e gere o código de embed pro Framer. Esta engrenagem some no código exportado.</p>
+
+    <div class="grp">
+      <h3>Conteúdo</h3>
+      <label class="fl">Eyebrow (linha de cima)</label><input type="text" id="c-eyebrow">
+      <label class="fl">Título</label><input type="text" id="c-title">
+      <label class="fl">Subtítulo</label><input type="text" id="c-subtitle">
+      <label class="fl">Rodapé (destaque)</label><input type="text" id="c-footnote">
+    </div>
+
+    <div class="grp">
+      <h3>Prêmios e chances</h3>
+      <p class="mini">Valor (%), peso (quanto maior, mais sai) e cupom. A soma dos pesos não precisa dar 100.</p>
+      <div id="prizeList"></div>
+      <button class="btn-ghost" id="addPrize" style="padding:8px 12px;border-radius:9px;cursor:pointer;font-size:12.5px;width:100%">+ Adicionar prêmio</button>
+    </div>
+
+    <div class="grp">
+      <h3>Resultado</h3>
+      <label class="fl">Resultado fixo (opcional)</label>
+      <select id="c-forced"><option value="">Aleatório ponderado (recomendado)</option></select>
+      <p class="mini">Escolha um valor pra roleta sempre cair nele (campanha controlada).</p>
+    </div>
+
+    <div class="grp">
+      <h3>Formulário</h3>
+      <label class="chk"><input type="checkbox" id="ff-nome"> Pedir nome</label>
+      <label class="chk"><input type="checkbox" id="ff-email"> Pedir e-mail</label>
+      <label class="chk"><input type="checkbox" id="ff-whatsapp"> Pedir WhatsApp</label>
+      <label class="fl" style="margin-top:6px">Webhook pra receber os leads (opcional)</label>
+      <input type="url" id="c-webhook" placeholder="https://hook.make.com/... ou Zapier/Apps Script">
+      <p class="mini">Cole uma URL de webhook (Make, Zapier, Google Apps Script) e cada lead é enviado pra lá. Vazio = sem envio.</p>
+    </div>
+
+    <div class="grp">
+      <h3>Botão final (CTA)</h3>
+      <label class="fl">Texto do botão</label><input type="text" id="c-cta-label">
+      <label class="fl">Link do botão</label><input type="url" id="c-cta-url" placeholder="https://wa.me/55... ou checkout">
+      <label class="fl">Validade (texto)</label><input type="text" id="c-valid">
+    </div>
+
+    <div class="grp">
+      <h3>Cores</h3>
+      <div class="colors">
+        <label class="color-item"><input type="color" id="col-blue"> Azul</label>
+        <label class="color-item"><input type="color" id="col-cyan"> Cyan</label>
+        <label class="color-item"><input type="color" id="col-gold"> Dourado</label>
+        <label class="color-item"><input type="color" id="col-ink"> Fundo</label>
+      </div>
+    </div>
+
+    <div class="grp">
+      <h3>Opções</h3>
+      <label class="chk"><input type="checkbox" id="o-sound"> Som ao girar</label>
+      <label class="chk"><input type="checkbox" id="o-once"> Permitir só 1 giro por pessoa</label>
+    </div>
+
+    <div class="act">
+      <button class="btn-embed" id="copyEmbed">Copiar código de embed (Framer)</button>
+      <button class="btn-ghost" id="downloadHtml">Baixar HTML</button>
+      <button class="btn-ghost" id="closePanel">Fechar</button>
+    </div>
+  </aside>
+
+  <div class="toast" id="toast">Copiado!</div>
+
+<script>
+(function(){
+  "use strict";
+  var TAU = Math.PI*2;
+
+  /* ---------- DEFAULTS ---------- */
+  var DEFAULTS = {
+    eyebrow:"Roleta de Natal · Gestão na Veia",
+    title:"Gire e ganhe seu <span class=\"hl\">desconto</span>",
+    subtitle:"Você tem 1 giro. Gire a roleta e descubra quanto de desconto vai levar hoje.",
+    footnote:"Cupom liberado após o giro.",
+    prizes:[
+      {value:10, weight:35, coupon:"NATAL10"},
+      {value:20, weight:28, coupon:"NATAL20"},
+      {value:30, weight:20, coupon:"NATAL30"},
+      {value:40, weight:12, coupon:"NATAL40"},
+      {value:45, weight:5,  coupon:"NATAL45"}
+    ],
+    /* ordem visual dos gomos: 12 gomos, valores menores aparecem mais */
+    segments:[10,20,30,10,20,45,10,30,20,40,10,20],
+    forced:null,
+    form:{nome:true, email:true, whatsapp:true, webhook:"https://script.google.com/macros/s/AKfycbzBUxYcRAkws_FL_Fnj1xojD8Y348B22q-78bJqBt0jwyRXHr2ejhZNIsXdLEuE4mdynQ/exec"},
+    formLead:"Preencha pra liberar seu cupom de desconto.",
+    cta:{label:"Garantir meu desconto", url:"https://wa.me/5599999999999?text=Quero%20garantir%20meu%20desconto"},
+    valid:"Válido apenas hoje.",
+    colors:{blue:"#0004FF", cyan:"#A0E3FF", gold:"#E6B422", ink:"#060608"},
+    sound:true, once:false, showConfig:true
+  };
+
+  function deepMerge(base, over){
+    var out = JSON.parse(JSON.stringify(base));
+    if(!over) return out;
+    Object.keys(over).forEach(function(k){
+      if(over[k] && typeof over[k]==="object" && !Array.isArray(over[k])){
+        out[k] = deepMerge(out[k]||{}, over[k]);
+      } else { out[k] = over[k]; }
+    });
+    return out;
+  }
+  var CONFIG = deepMerge(DEFAULTS, window.GL_CONFIG||{});
+
+  /* ---------- helpers ---------- */
+  var $ = function(s){return document.querySelector(s);};
+  var norm = function(a){a%=TAU; if(a<0)a+=TAU; return a;};
+  var canvas = $("#wheel"), ctx = canvas.getContext("2d");
+  var rotation = 0, spinning = false, size = 520, dpr = 1;
+
+  function segAtPointer(rot){
+    var N = CONFIG.segments.length, seg = TAU/N;
+    return Math.floor(norm(1.5*Math.PI - rot)/seg) % N;
+  }
+
+  /* shade util pra escurecer/clarear hex */
+  function shade(hex, amt){
+    hex=hex.replace('#',''); if(hex.length===3) hex=hex.replace(/(.)/g,'$1$1');
+    var r=parseInt(hex.substr(0,2),16), g=parseInt(hex.substr(2,2),16), b=parseInt(hex.substr(4,2),16);
+    r=Math.max(0,Math.min(255,Math.round(r+amt))); g=Math.max(0,Math.min(255,Math.round(g+amt))); b=Math.max(0,Math.min(255,Math.round(b+amt)));
+    return 'rgb('+r+','+g+','+b+')';
+  }
+
+  /* ---------- desenho da roda ---------- */
+  function draw(){
+    var N = CONFIG.segments.length, seg = TAU/N;
+    var c = size/2;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,size,size);
+    ctx.save();
+    ctx.translate(c,c);
+    ctx.rotate(rotation);
+
+    var rOuter = c-6;
+    var blue = CONFIG.colors.blue, cyan = CONFIG.colors.cyan, gold = CONFIG.colors.gold;
+    var fillA = blue, fillB = "#0B0B10";
+
+    for(var i=0;i<N;i++){
+      var a0 = i*seg, a1 = (i+1)*seg, val = CONFIG.segments[i];
+      ctx.beginPath();
+      ctx.moveTo(0,0);
+      ctx.arc(0,0,rOuter,a0,a1);
+      ctx.closePath();
+      // gradiente radial por gomo pra dar profundidade
+      var grad = ctx.createRadialGradient(0,0,rOuter*0.12,0,0,rOuter);
+      if(i%2===0){ grad.addColorStop(0,shade(blue,55)); grad.addColorStop(1,blue); }
+      else { grad.addColorStop(0,"#1A1A28"); grad.addColorStop(1,"#0A0A10"); }
+      ctx.fillStyle = grad;
+      ctx.fill();
+      // divisor dourado
+      ctx.strokeStyle = gold; ctx.lineWidth = 1.4; ctx.stroke();
+
+      // texto radial
+      ctx.save();
+      var mid = a0 + seg/2;
+      ctx.rotate(mid);
+      var flip = (mid > Math.PI/2 && mid < 1.5*Math.PI);
+      var tx = rOuter*0.66;
+      if(flip){ ctx.rotate(Math.PI); tx = -tx; }
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      var hi = val>=40;
+      ctx.fillStyle = hi ? CONFIG.colors.gold : "#FFFFFF";
+      if(hi){ ctx.shadowColor="rgba(230,180,34,.6)"; ctx.shadowBlur=8; }
+      ctx.font = "700 "+(size*0.072)+"px 'Sora',sans-serif";
+      ctx.fillText(val+"%", tx, -size*0.012);
+      ctx.shadowBlur=0;
+      ctx.fillStyle = hi ? "rgba(252,233,166,.92)" : "rgba(255,255,255,.62)";
+      ctx.font = "600 "+(size*0.026)+"px 'Sora',sans-serif";
+      ctx.fillText("OFF", tx, size*0.04);
+      ctx.restore();
+    }
+    ctx.restore();
+
+    // sombra interna sutil pra dar volume
+    var vg = ctx.createRadialGradient(c,c,rOuter*0.55,c,c,rOuter);
+    vg.addColorStop(0,"rgba(0,0,0,0)"); vg.addColorStop(1,"rgba(0,0,0,0.28)");
+    ctx.fillStyle=vg; ctx.beginPath(); ctx.arc(c,c,rOuter,0,TAU); ctx.fill();
+
+    drawRim(c, rOuter, gold);
+  }
+
+  function drawRim(c, rOuter, gold){
+    // aro dourado metalico
+    var rg = ctx.createLinearGradient(0,0,size,size);
+    rg.addColorStop(0,"#FCE9A6"); rg.addColorStop(.25,"#E6B422");
+    rg.addColorStop(.5,"#9C6B12"); rg.addColorStop(.75,"#E6B422"); rg.addColorStop(1,"#FCE9A6");
+    ctx.lineWidth = Math.max(7, size*0.022);
+    ctx.strokeStyle = rg;
+    ctx.beginPath(); ctx.arc(c,c,rOuter+ctx.lineWidth/2-1,0,TAU); ctx.stroke();
+    // luzinhas no aro
+    var bulbs = 24, rb = rOuter+ctx.lineWidth/2-1;
+    for(var i=0;i<bulbs;i++){
+      var ang = (i/bulbs)*TAU + rotation*0.0;
+      var x = c+Math.cos(ang)*rb, y = c+Math.sin(ang)*rb;
+      ctx.beginPath(); ctx.arc(x,y,Math.max(1.6,size*0.006),0,TAU);
+      ctx.fillStyle = i%2 ? "rgba(255,247,214,.95)" : CONFIG.colors.cyan;
+      ctx.shadowColor = i%2 ? "rgba(252,233,166,.9)" : "rgba(160,227,255,.9)";
+      ctx.shadowBlur = size*0.014; ctx.fill(); ctx.shadowBlur=0;
+    }
+  }
+
+  /* ---------- responsivo ---------- */
+  function resize(){
+    var maxW = Math.min(window.innerWidth*0.92, 560);
+    var maxH = window.innerHeight*0.62;
+    size = Math.max(260, Math.min(maxW, maxH));
+    dpr = window.devicePixelRatio||1;
+    canvas.style.width = size+"px"; canvas.style.height = size+"px";
+    canvas.width = size*dpr; canvas.height = size*dpr;
+    var hub = size*0.30;
+    var hubEl = $("#hub");
+    hubEl.style.width = hub+"px"; hubEl.style.height = hub+"px";
+    hubEl.style.setProperty("--hub-g1",(size*0.052)+"px");
+    hubEl.style.setProperty("--hub-g2",(size*0.052)+"px");
+    draw();
+  }
+
+  /* ---------- som (tick) ---------- */
+  var actx=null;
+  function tick(){
+    if(!CONFIG.sound) return;
+    try{
+      actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+      var o=actx.createOscillator(), g=actx.createGain();
+      o.type="square"; o.frequency.value=520;
+      g.gain.setValueAtTime(.05,actx.currentTime);
+      g.gain.exponentialRampToValueAtTime(.0001,actx.currentTime+.06);
+      o.connect(g); g.connect(actx.destination); o.start(); o.stop(actx.currentTime+.06);
+    }catch(e){}
+  }
+
+  /* ---------- sorteio ponderado ---------- */
+  function pickValue(){
+    if(CONFIG.forced!==null && CONFIG.forced!==""){
+      var f=Number(CONFIG.forced);
+      if(CONFIG.prizes.some(function(p){return p.value===f;})) return f;
+    }
+    var total=0,i; for(i=0;i<CONFIG.prizes.length;i++) total+=Math.max(0,CONFIG.prizes[i].weight);
+    if(total<=0) return CONFIG.prizes[0].value;
+    var r=Math.random()*total;
+    for(i=0;i<CONFIG.prizes.length;i++){ r-=Math.max(0,CONFIG.prizes[i].weight); if(r<=0) return CONFIG.prizes[i].value; }
+    return CONFIG.prizes[CONFIG.prizes.length-1].value;
+  }
+
+  function couponFor(val){
+    var p=CONFIG.prizes.filter(function(x){return x.value===val;})[0];
+    return p && p.coupon ? p.coupon : ("DESC"+val);
+  }
+
+  /* ---------- giro ---------- */
+  var STORE_KEY="gl_roleta_spun";
+  function hasSpun(){ try{return localStorage.getItem(STORE_KEY)==="1";}catch(e){return false;} }
+  function markSpun(){ try{localStorage.setItem(STORE_KEY,"1");}catch(e){} }
+
+  function spin(){
+    if(spinning) return;
+    if(CONFIG.once && hasSpun()){ openModal(Number(localStorage.getItem("gl_roleta_val")||CONFIG.segments[0]), true); return; }
+    spinning=true;
+    var hub=$("#hub"); hub.disabled=true;
+    var winVal=pickValue();
+    var idxs=[]; CONFIG.segments.forEach(function(v,i){ if(v===winVal) idxs.push(i); });
+    var t = idxs.length ? idxs[Math.floor(Math.random()*idxs.length)] : Math.floor(Math.random()*CONFIG.segments.length);
+    var N=CONFIG.segments.length, seg=TAU/N;
+    var centerBase=(t+0.5)*seg;
+    var jitter=(Math.random()*2-1)*seg*0.34;
+    var targetBase=norm(1.5*Math.PI-(centerBase+jitter));
+    var turns=6+Math.floor(Math.random()*3);
+    var start=rotation;
+    var finalRot=start + turns*TAU + norm(targetBase-norm(start));
+    var dur=4800, t0=performance.now(), lastSeg=segAtPointer(start);
+
+    function frame(now){
+      var p=Math.min(1,(now-t0)/dur);
+      var e=1-Math.pow(1-p,4);
+      rotation=start+(finalRot-start)*e;
+      draw();
+      var cs=segAtPointer(rotation);
+      if(cs!==lastSeg){ lastSeg=cs; tick(); }
+      if(p<1){ requestAnimationFrame(frame); }
+      else {
+        rotation=finalRot; draw(); spinning=false;
+        var resultVal=CONFIG.segments[t];
+        try{ localStorage.setItem("gl_roleta_val", resultVal);}catch(e){}
+        markSpun();
+        fireConfetti();
+        setTimeout(function(){ openModal(resultVal,false); }, 420);
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  /* ---------- modal ---------- */
+  function openModal(val, replay){
+    $("#prizeBig").innerHTML = val+"%<small>DE DESCONTO</small>";
+    // reset etapas
+    $("#formStage").classList.remove("hide");
+    $("#couponStage").classList.remove("show");
+    $("#formErr").textContent="";
+    // mostra campos certos
+    ["nome","email","whatsapp"].forEach(function(f){
+      var el=document.querySelector('.field[data-f="'+f+'"]');
+      if(el) el.style.display = CONFIG.form[f] ? "block" : "none";
+    });
+    var anyField = CONFIG.form.nome||CONFIG.form.email||CONFIG.form.whatsapp;
+    $("#formLead").textContent = CONFIG.formLead;
+    if(replay){ // ja jogou: pula direto pro cupom
+      revealCoupon(val);
+    } else if(!anyField){
+      revealCoupon(val);
+    }
+    // cupom + cta
+    $("#couponCode").textContent = couponFor(val);
+    var cta=$("#ctaBtn"); cta.textContent=CONFIG.cta.label; cta.href=CONFIG.cta.url||"#";
+    $("#validMsg").textContent=CONFIG.valid;
+    $("#overlay").classList.add("show");
+  }
+  function closeModal(){ $("#overlay").classList.remove("show"); }
+  function revealCoupon(val){
+    $("#formStage").classList.add("hide");
+    $("#couponStage").classList.add("show");
+    $("#couponCode").textContent = couponFor(val);
+  }
+
+  /* ---------- form submit ---------- */
+  function validEmail(v){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);}
+  function handleSubmit(ev){
+    ev.preventDefault();
+    var form=ev.target, data={}, err="";
+    if(CONFIG.form.nome){ data.nome=form.nome.value.trim(); if(!data.nome) err="Digite seu nome."; }
+    if(!err && CONFIG.form.email){ data.email=form.email.value.trim(); if(!validEmail(data.email)) err="Digite um e-mail válido."; }
+    if(!err && CONFIG.form.whatsapp){ data.whatsapp=form.whatsapp.value.trim(); if(data.whatsapp.replace(/\D/g,'').length<10) err="Digite um WhatsApp válido."; }
+    if(err){ $("#formErr").textContent=err; return; }
+    data.desconto = $("#prizeBig").textContent.replace("DE DESCONTO","").trim();
+    data.cupom = $("#couponCode").textContent;
+    data.origem = "roleta-gestao-life";
+    data.data = new Date().toISOString();
+    // envia pro webhook se houver
+    if(CONFIG.form.webhook){
+      try{
+        fetch(CONFIG.form.webhook,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(data)}).catch(function(){});
+      }catch(e){}
+    }
+    revealCoupon(parseInt(data.desconto,10));
+  }
+
+  /* ---------- confetti ---------- */
+  var cf=$("#confetti"), cfx=cf.getContext("2d"), parts=[], cfRun=false;
+  function fireConfetti(){
+    cf.width=window.innerWidth; cf.height=window.innerHeight;
+    var cols=[CONFIG.colors.gold,"#FCE9A6",CONFIG.colors.cyan,"#FFFFFF",CONFIG.colors.blue];
+    parts=[];
+    for(var i=0;i<140;i++){
+      parts.push({x:cf.width/2,y:cf.height*0.42,
+        vx:(Math.random()-0.5)*14, vy:(Math.random()*-15)-4,
+        g:0.32+Math.random()*0.2, s:5+Math.random()*7,
+        c:cols[(Math.random()*cols.length)|0], a:1, rot:Math.random()*TAU, vr:(Math.random()-.5)*.3});
+    }
+    if(!cfRun){ cfRun=true; requestAnimationFrame(cfFrame); }
+  }
+  function cfFrame(){
+    cfx.clearRect(0,0,cf.width,cf.height);
+    var alive=false;
+    for(var i=0;i<parts.length;i++){
+      var p=parts[i]; p.vy+=p.g; p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr; p.a-=0.008;
+      if(p.a>0 && p.y<cf.height+30){
+        alive=true;
+        cfx.save(); cfx.globalAlpha=Math.max(0,p.a); cfx.translate(p.x,p.y); cfx.rotate(p.rot);
+        cfx.fillStyle=p.c; cfx.fillRect(-p.s/2,-p.s/2,p.s,p.s*0.6); cfx.restore();
+      }
+    }
+    if(alive) requestAnimationFrame(cfFrame); else { cfRun=false; cfx.clearRect(0,0,cf.width,cf.height); }
+  }
+
+  /* ---------- aplica CONFIG na tela ---------- */
+  function applyConfig(){
+    var r=document.documentElement.style;
+    r.setProperty("--blue",CONFIG.colors.blue);
+    r.setProperty("--cyan",CONFIG.colors.cyan);
+    r.setProperty("--gold",CONFIG.colors.gold);
+    r.setProperty("--ink",CONFIG.colors.ink);
+    $("#eyebrow").innerHTML=CONFIG.eyebrow;
+    $("#title").innerHTML=CONFIG.title;
+    $("#subtitle").textContent=CONFIG.subtitle;
+    $("#footnote").textContent=CONFIG.footnote;
+    $("#gear").style.display = CONFIG.showConfig ? "flex" : "none";
+    draw();
+  }
+
+  /* ---------- PAINEL DE CONFIG ---------- */
+  function buildPanel(){
+    $("#c-eyebrow").value=CONFIG.eyebrow;
+    $("#c-title").value=CONFIG.title;
+    $("#c-subtitle").value=CONFIG.subtitle;
+    $("#c-footnote").value=CONFIG.footnote;
+    $("#c-webhook").value=CONFIG.form.webhook||"";
+    $("#c-cta-label").value=CONFIG.cta.label;
+    $("#c-cta-url").value=CONFIG.cta.url;
+    $("#c-valid").value=CONFIG.valid;
+    $("#ff-nome").checked=CONFIG.form.nome;
+    $("#ff-email").checked=CONFIG.form.email;
+    $("#ff-whatsapp").checked=CONFIG.form.whatsapp;
+    $("#o-sound").checked=CONFIG.sound;
+    $("#o-once").checked=CONFIG.once;
+    $("#col-blue").value=CONFIG.colors.blue;
+    $("#col-cyan").value=CONFIG.colors.cyan;
+    $("#col-gold").value=CONFIG.colors.gold;
+    $("#col-ink").value=CONFIG.colors.ink;
+    renderPrizeRows();
+    renderForcedOptions();
+  }
+  function renderPrizeRows(){
+    var box=$("#prizeList"); box.innerHTML="";
+    CONFIG.prizes.forEach(function(p,idx){
+      var row=document.createElement("div"); row.className="prize-row";
+      row.innerHTML=
+        '<input type="number" value="'+p.value+'" data-k="value" data-i="'+idx+'" title="% desconto">'+
+        '<input type="number" value="'+p.weight+'" data-k="weight" data-i="'+idx+'" title="peso/chance">'+
+        '<input type="text" value="'+(p.coupon||"")+'" data-k="coupon" data-i="'+idx+'" title="cupom">'+
+        '<button class="rm" data-rm="'+idx+'" title="remover">&times;</button>';
+      box.appendChild(row);
+    });
+    box.querySelectorAll("input").forEach(function(inp){
+      inp.addEventListener("input",function(){
+        var i=+inp.getAttribute("data-i"), k=inp.getAttribute("data-k");
+        CONFIG.prizes[i][k] = (k==="coupon")? inp.value : Number(inp.value);
+        syncSegments(); renderForcedOptions(); draw();
+      });
+    });
+    box.querySelectorAll(".rm").forEach(function(b){
+      b.addEventListener("click",function(){
+        if(CONFIG.prizes.length<=2){ showToast("Mínimo de 2 prêmios."); return; }
+        CONFIG.prizes.splice(+b.getAttribute("data-rm"),1);
+        syncSegments(); renderPrizeRows(); renderForcedOptions(); draw();
+      });
+    });
+  }
+  /* mantem os gomos coerentes com os premios (gera ordem intercalada) */
+  function syncSegments(){
+    var vals=CONFIG.prizes.map(function(p){return p.value;});
+    if(!vals.length) return;
+    // ordena por peso desc pra repetir os mais provaveis
+    var byW=CONFIG.prizes.slice().sort(function(a,b){return b.weight-a.weight;});
+    var target=Math.max(8, Math.min(14, vals.length*2));
+    var seq=[];
+    var k=0;
+    while(seq.length<target){
+      seq.push(byW[k%byW.length].value);
+      k++;
+    }
+    // intercala pra nao ficarem iguais lado a lado
+    seq.sort(function(){return Math.random()-0.5;});
+    CONFIG.segments=seq;
+  }
+  function renderForcedOptions(){
+    var sel=$("#c-forced"); var cur=CONFIG.forced;
+    sel.innerHTML='<option value="">Aleatório ponderado (recomendado)</option>';
+    CONFIG.prizes.forEach(function(p){
+      var o=document.createElement("option"); o.value=p.value; o.textContent="Sempre "+p.value+"%";
+      if(String(cur)===String(p.value)) o.selected=true;
+      sel.appendChild(o);
+    });
+  }
+
+  function bindPanel(){
+    var map=[["#c-eyebrow","eyebrow"],["#c-title","title"],["#c-subtitle","subtitle"],["#c-footnote","footnote"],["#c-valid","valid"]];
+    map.forEach(function(m){ $(m[0]).addEventListener("input",function(){ CONFIG[m[1]]=this.value; applyConfig(); }); });
+    $("#c-cta-label").addEventListener("input",function(){CONFIG.cta.label=this.value;});
+    $("#c-cta-url").addEventListener("input",function(){CONFIG.cta.url=this.value;});
+    $("#c-webhook").addEventListener("input",function(){CONFIG.form.webhook=this.value;});
+    $("#ff-nome").addEventListener("change",function(){CONFIG.form.nome=this.checked;});
+    $("#ff-email").addEventListener("change",function(){CONFIG.form.email=this.checked;});
+    $("#ff-whatsapp").addEventListener("change",function(){CONFIG.form.whatsapp=this.checked;});
+    $("#o-sound").addEventListener("change",function(){CONFIG.sound=this.checked;});
+    $("#o-once").addEventListener("change",function(){CONFIG.once=this.checked;});
+    $("#c-forced").addEventListener("change",function(){CONFIG.forced=this.value===""?null:Number(this.value);});
+    ["blue","cyan","gold","ink"].forEach(function(key){
+      $("#col-"+key).addEventListener("input",function(){ CONFIG.colors[key]=this.value; applyConfig(); });
+    });
+    $("#addPrize").addEventListener("click",function(){
+      CONFIG.prizes.push({value:15,weight:10,coupon:"NOVO15"});
+      syncSegments(); renderPrizeRows(); renderForcedOptions(); draw();
+    });
+    $("#gear").addEventListener("click",function(){ $("#panel").classList.add("open"); });
+    $("#closePanel").addEventListener("click",function(){ $("#panel").classList.remove("open"); });
+    $("#copyEmbed").addEventListener("click",copyEmbed);
+    $("#downloadHtml").addEventListener("click",downloadHtml);
+  }
+
+  /* ---------- export / embed ---------- */
+  function buildExportConfig(){
+    var c=JSON.parse(JSON.stringify(CONFIG));
+    c.showConfig=false;
+    return c;
+  }
+  function buildFullHTML(){
+    var clone=document.documentElement.cloneNode(true);
+    var cfg=clone.querySelector("#gl-config");
+    cfg.textContent="window.GL_CONFIG = "+JSON.stringify(buildExportConfig())+";";
+    // reseta painel/overlay no clone pra estado limpo
+    var ov=clone.querySelector("#overlay"); if(ov) ov.classList.remove("show");
+    var pn=clone.querySelector("#panel"); if(pn) pn.classList.remove("open");
+    return "<!DOCTYPE html>\n<html lang=\"pt-BR\">\n"+clone.innerHTML.replace(/^[\s\S]*?<head/i,"<head")+"\n</html>";
+  }
+  function buildFullHTMLSafe(){
+    // metodo robusto: usa outerHTML do elemento html
+    var clone=document.documentElement.cloneNode(true);
+    var cfg=clone.querySelector("#gl-config");
+    cfg.textContent="window.GL_CONFIG = "+JSON.stringify(buildExportConfig())+";";
+    var ov=clone.querySelector("#overlay"); if(ov) ov.classList.remove("show");
+    var pn=clone.querySelector("#panel"); if(pn) pn.classList.remove("open");
+    return "<!DOCTYPE html>\n"+clone.outerHTML;
+  }
+  function buildIframeEmbed(){
+    var enc=buildFullHTMLSafe().replace(/&/g,"&amp;").replace(/"/g,"&quot;");
+    return '<iframe srcdoc="'+enc+'" title="Roleta de Descontos" loading="lazy" '+
+      'style="width:100%;height:820px;max-width:680px;border:0;display:block;margin:0 auto;border-radius:24px;overflow:hidden"></iframe>';
+  }
+  function copyEmbed(){
+    var embed='<!-- Roleta de Descontos · Gestão Life · cole num Embed do Framer (modo HTML) -->\n'+buildIframeEmbed();
+    copyText(embed, "Embed copiado! Cole num Embed do Framer (modo HTML).");
+  }
+  function downloadHtml(){
+    var html=buildFullHTMLSafe();
+    var blob=new Blob([html],{type:"text/html"});
+    var a=document.createElement("a");
+    a.href=URL.createObjectURL(blob); a.download="roleta-descontos-gestao-life.html";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    showToast("HTML baixado.");
+  }
+  function copyText(txt, msg){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(function(){showToast(msg);},function(){fallbackCopy(txt,msg);});
+    } else { fallbackCopy(txt,msg); }
+  }
+  function fallbackCopy(txt,msg){
+    var ta=document.createElement("textarea"); ta.value=txt; ta.style.position="fixed"; ta.style.opacity="0";
+    document.body.appendChild(ta); ta.select();
+    try{document.execCommand("copy"); showToast(msg);}catch(e){showToast("Não consegui copiar automático.");}
+    document.body.removeChild(ta);
+  }
+  var toastT;
+  function showToast(msg){
+    var t=$("#toast"); t.textContent=msg; t.classList.add("show");
+    clearTimeout(toastT); toastT=setTimeout(function(){t.classList.remove("show");},2600);
+  }
+
+  /* ---------- eventos base ---------- */
+  $("#hub").addEventListener("click",spin);
+  $("#closeModal").addEventListener("click",closeModal);
+  $("#overlay").addEventListener("click",function(e){ if(e.target===this) closeModal(); });
+  $("#leadForm").addEventListener("submit",handleSubmit);
+  $("#copyCoupon").addEventListener("click",function(){ copyText($("#couponCode").textContent,"Cupom copiado!"); });
+  window.addEventListener("resize",resize);
+
+  /* ---------- init ---------- */
+  applyConfig();
+  buildPanel();
+  bindPanel();
+  resize();
+})();
+</script>
+</body>
+</html>
