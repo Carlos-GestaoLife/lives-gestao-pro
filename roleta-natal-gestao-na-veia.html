@@ -359,6 +359,8 @@
     return out;
   }
   var CONFIG = deepMerge(DEFAULTS, window.GL_CONFIG||{});
+  // dentro de um iframe (site publicado) a engrenagem de config some sozinha
+  try{ if(window.self!==window.top) CONFIG.showConfig=false; }catch(e){ CONFIG.showConfig=false; }
 
   /* ---------- helpers ---------- */
   var $ = function(s){return document.querySelector(s);};
