@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Roleta de Descontos · Gestão Life</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<title>Gestão na Veia · Seu desconto</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -187,7 +190,7 @@
   <div class="orb b"></div>
 
   <main class="stage">
-    <span class="eyebrow" id="eyebrow">Roleta de Natal · Gestão na Veia</span>
+    <span class="eyebrow" id="eyebrow">Gestão na Veia</span>
     <h1 id="title">Gire e ganhe seu <span class="hl">desconto</span></h1>
     <p class="subtitle" id="subtitle">Você tem 1 giro. Gire a roleta e descubra quanto de desconto vai levar hoje.</p>
 
@@ -326,26 +329,25 @@
 
   /* ---------- DEFAULTS ---------- */
   var DEFAULTS = {
-    eyebrow:"Roleta de Natal · Gestão na Veia",
+    eyebrow:"Gestão na Veia",
     title:"Gire e ganhe seu <span class=\"hl\">desconto</span>",
     subtitle:"Você tem 1 giro. Gire a roleta e descubra quanto de desconto vai levar hoje.",
     footnote:"Cupom liberado após o giro.",
     prizes:[
-      {value:10, weight:35, coupon:"NATAL10"},
-      {value:20, weight:28, coupon:"NATAL20"},
-      {value:30, weight:20, coupon:"NATAL30"},
-      {value:40, weight:12, coupon:"NATAL40"},
-      {value:45, weight:5,  coupon:"NATAL45"}
+      {value:5,  weight:40, coupon:"NATAL5"},
+      {value:10, weight:30, coupon:"TOTAL10"},
+      {value:15, weight:18, coupon:"15NATAL"},
+      {value:20, weight:12, coupon:"GNVNATAL20"}
     ],
     /* ordem visual dos gomos: 12 gomos, valores menores aparecem mais */
-    segments:[10,20,30,10,20,45,10,30,20,40,10,20],
+    segments:[5,10,15,20,5,10,15,5,10,20,5,10],
     forced:null,
     form:{nome:true, email:true, whatsapp:true, webhook:"https://script.google.com/macros/s/AKfycbzBUxYcRAkws_FL_Fnj1xojD8Y348B22q-78bJqBt0jwyRXHr2ejhZNIsXdLEuE4mdynQ/exec"},
     formLead:"Preencha pra liberar seu cupom de desconto.",
-    cta:{label:"Garantir meu desconto", url:"https://wa.me/5599999999999?text=Quero%20garantir%20meu%20desconto"},
+    cta:{label:"Garantir meu desconto", url:"https://gestaolife.com/pre%C3%A7os/natal"},
     valid:"Válido apenas hoje.",
     colors:{blue:"#0004FF", cyan:"#A0E3FF", gold:"#E6B422", ink:"#060608"},
-    sound:true, once:false, showConfig:true
+    sound:true, once:true, showConfig:false
   };
 
   function deepMerge(base, over){
@@ -361,6 +363,9 @@
   var CONFIG = deepMerge(DEFAULTS, window.GL_CONFIG||{});
   // dentro de um iframe (site publicado) a engrenagem de config some sozinha
   try{ if(window.self!==window.top) CONFIG.showConfig=false; }catch(e){ CONFIG.showConfig=false; }
+  // atalho secreto pro Carlos abrir o painel: adicione ?edit=1 no fim do link
+  var GL_EDIT=false;
+  try{ GL_EDIT=/[?&]edit=1(&|$)/.test(location.search); }catch(e){}
 
   /* ---------- helpers ---------- */
   var $ = function(s){return document.querySelector(s);};
@@ -418,7 +423,7 @@
       var tx = rOuter*0.66;
       if(flip){ ctx.rotate(Math.PI); tx = -tx; }
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      var hi = val>=40;
+      var hi = val>=20;
       ctx.fillStyle = hi ? CONFIG.colors.gold : "#FFFFFF";
       if(hi){ ctx.shadowColor="rgba(230,180,34,.6)"; ctx.shadowBlur=8; }
       ctx.font = "700 "+(size*0.072)+"px 'Sora',sans-serif";
@@ -592,7 +597,7 @@
     if(err){ $("#formErr").textContent=err; return; }
     data.desconto = $("#prizeBig").textContent.replace("DE DESCONTO","").trim();
     data.cupom = $("#couponCode").textContent;
-    data.origem = "roleta-gestao-life";
+    data.origem = "roleta-gestao-na-veia";
     data.data = new Date().toISOString();
     // envia pro webhook se houver
     if(CONFIG.form.webhook){
@@ -642,7 +647,7 @@
     $("#title").innerHTML=CONFIG.title;
     $("#subtitle").textContent=CONFIG.subtitle;
     $("#footnote").textContent=CONFIG.footnote;
-    $("#gear").style.display = CONFIG.showConfig ? "flex" : "none";
+    $("#gear").style.display = (CONFIG.showConfig || GL_EDIT) ? "flex" : "none";
     draw();
   }
 
@@ -752,15 +757,6 @@
     c.showConfig=false;
     return c;
   }
-  function buildFullHTML(){
-    var clone=document.documentElement.cloneNode(true);
-    var cfg=clone.querySelector("#gl-config");
-    cfg.textContent="window.GL_CONFIG = "+JSON.stringify(buildExportConfig())+";";
-    // reseta painel/overlay no clone pra estado limpo
-    var ov=clone.querySelector("#overlay"); if(ov) ov.classList.remove("show");
-    var pn=clone.querySelector("#panel"); if(pn) pn.classList.remove("open");
-    return "<!DOCTYPE html>\n<html lang=\"pt-BR\">\n"+clone.innerHTML.replace(/^[\s\S]*?<head/i,"<head")+"\n</html>";
-  }
   function buildFullHTMLSafe(){
     // metodo robusto: usa outerHTML do elemento html
     var clone=document.documentElement.cloneNode(true);
@@ -783,7 +779,7 @@
     var html=buildFullHTMLSafe();
     var blob=new Blob([html],{type:"text/html"});
     var a=document.createElement("a");
-    a.href=URL.createObjectURL(blob); a.download="roleta-descontos-gestao-life.html";
+    a.href=URL.createObjectURL(blob); a.download="roleta-natal-gestao-na-veia.html";
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     showToast("HTML baixado.");
   }
